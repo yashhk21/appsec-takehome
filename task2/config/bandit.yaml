@@ -1,0 +1,31 @@
+# appsec-takehome bandit config
+#
+# Bounded rule set: only these 4 test IDs run, out of bandit's ~70+ built-in
+# checks. Chosen as a cohesive "dangerous function / injection / weak
+# crypto" group rather than the full default set, so every finding is worth
+# a human looking at (see README.md, "Config choices" for the fuller
+# rationale on each).
+#
+#   B307 - eval() used                          (arbitrary code execution)
+#   B602 - subprocess call with shell=True       (OS command injection)
+#   B608 - hardcoded/string-built SQL expression (SQL injection)
+#   B324 - insecure hash function (e.g. md5)     (weak cryptography)
+tests: ['B307', 'B602', 'B608', 'B324']
+
+# ---------------------------------------------------------------------------
+# Noise-reduction mechanism (path exclude): skip sast_target/legacy/.
+#
+# That directory holds frozen, unmaintained code slated for deletion (see
+# sast_target/legacy/old_report.py) that would otherwise trip B608 with the
+# exact same pattern as app/db.py. Findings in dead code that's not being
+# touched again aren't worth carrying in every scan - excluding the path
+# entirely keeps the report focused on code that's actually still changing.
+#
+# This also doubles as fine-grained SCOPE CONTROL: it narrows what's
+# analyzed to a specific subtree within whatever TARGET_DIR the wrapper was
+# given. The coarser scope control - which directory gets scanned at all -
+# is TARGET_DIR itself (scripts/scan_sast.sh), not this file. See
+# README.md, "Scope control".
+# ---------------------------------------------------------------------------
+exclude_dirs:
+  - 'sast_target/legacy'

@@ -1,0 +1,41 @@
+title = "appsec-takehome gitleaks config"
+
+# Start from gitleaks' maintained default ruleset (AWS keys, GitHub/GitLab/Slack
+# tokens, private key blocks, generic high-entropy secrets, etc.) and layer our
+# own tuning on top, instead of hand-maintaining every rule ourselves.
+#
+# Tuning choice #1 (rule disable): turn off "generic-api-key".
+#
+# The default generic-api-key rule is a broad entropy/keyword heuristic and is
+# one of the noisiest rules in the default set on real codebases (test
+# fixtures, hashes, base64 blobs, etc. all trip it). We disable it here and
+# rely on the specific, higher-confidence rules (aws-access-token,
+# slack-webhook-url, private-key, etc.) plus the baseline/suppression flow for
+# anything that still needs a one-off allow.
+#
+# Trade-off, called out explicitly: fixtures/app/payments.py contains a
+# hardcoded API key that only the generic-api-key rule would have caught (it
+# doesn't match any vendor-specific pattern like aws-access-token or
+# slack-webhook-url). With this rule disabled, that key is NOT detected by a
+# scan - a deliberate demonstration that "reduce noise by disabling a broad
+# heuristic" always trades away some true-positive coverage, not just
+# false positives. See README.md, "Config tuning choices" for the fuller
+# discussion of this trade-off.
+[extend]
+useDefault = true
+disabledRules = ["generic-api-key"]
+
+# ---------------------------------------------------------------------------
+# Tuning choice #2 (path exclude): skip sample/onboarding env files.
+#
+# fixtures/safe/example.env.sample intentionally ships with placeholder values
+# (e.g. "CHANGEME") for local dev onboarding. Nothing in there is a real
+# credential, and low-entropy placeholders shouldn't ever page anyone - so we
+# exclude the whole "known safe / sample config" path from scanning entirely
+# rather than relying on entropy/allowlist regexes staying lucky forever.
+# ---------------------------------------------------------------------------
+[allowlist]
+paths = [
+    '''fixtures/safe/.*''',
+]
+
